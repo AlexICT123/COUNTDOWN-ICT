@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
   <head>
@@ -77,9 +78,32 @@
       import React, { useState, useEffect, useMemo } from 'https://esm.sh/react@19.2.3';
       import { createRoot } from 'https://esm.sh/react-dom@19.2.3/client';
       import htm from 'https://esm.sh/htm';
-      import { GoogleGenAI, Type } from "https://esm.sh/@google/genai@1.37.0";
 
       const html = htm.bind(React.createElement);
+
+      // --- Static Quotes (20 unique quotes) ---
+      const MOTIVATIONAL_QUOTES = [
+        { quote: "人生就像一段優質的代碼，邏輯清晰，終能運行出完美的結果。", author: "ICT 守護者" },
+        { quote: "每一次複習都是一次數據同步，讓你的大腦庫存更加充實。", author: "系統分析師" },
+        { quote: "面對困難要像面對 Bug 一樣冷靜，逐一排查，終會解決。", author: "資深開發者" },
+        { quote: "你的潛力如同無限的雲端空間，只要願意開發，便無窮無盡。", author: "網絡架構師" },
+        { quote: "成功沒有快捷鍵，唯有腳踏實地，按部就班。", author: "ICT 導師" },
+        { quote: "學習就像深度學習模型，需要大量的輸入與訓練，才能產出智慧。", author: "AI 研究員" },
+        { quote: "不要在意暫時的失敗，那只是程序的 Exception，捕捉並處理它就好。", author: "代碼工程師" },
+        { quote: "編寫屬於你的未來，每一行代碼都代表著你的汗水與智慧。", author: "ICT 守護者" },
+        { quote: "目標要像固定的 IP 地址，無論路徑如何變化，始終清晰可見。", author: "網絡專家" },
+        { quote: "勤奮是硬件，方法是軟件，兩者結合才能發揮最大效能。", author: "電腦科學家" },
+        { quote: "生活中的每一個細節，都值得像處理關鍵代碼一樣去雕琢。", author: "品質保證員" },
+        { quote: "保持好奇心，它是驅動你探索科技世界的原始動力。", author: "創新極客" },
+        { quote: "複習的過程就像代碼重構，讓知識體系更簡潔、更強大。", author: "軟體架構師" },
+        { quote: "堅持就是最好的算法，它能幫你解決人生中最複雜的難題。", author: "算法大師" },
+        { quote: "你當下的付出，正在為未來的成功進行預編譯。", author: "編譯器專家" },
+        { quote: "夢想是內核，努力是外殼，唯有內外兼修，才能穩定運行。", author: "系統專家" },
+        { quote: "把壓力轉化為動力，就像處理器將電能轉化為算力。", author: "硬件工程師" },
+        { quote: "自信是你的密鑰，它能開啟通往成功的加密門扉。", author: "資訊安全官" },
+        { quote: "讓每一天的進步都成為一個 commit，記錄你成長的軌跡。", author: "Git 管理員" },
+        { quote: "四月二十四，是你期待已久的 Release Date，準備好迎接綻放吧。", author: "ICT 守護者" }
+      ];
 
       // --- Logic ---
       const getTargetDate = () => {
@@ -156,15 +180,7 @@
         </div>
       `;
 
-      const DailyInsight = ({ insight, loading, onRefresh }) => {
-        if (loading) {
-          return html`
-            <div className="mt-12 glass p-8 rounded-3xl max-w-2xl w-full animate-pulse flex flex-col gap-6">
-              <div className="h-4 w-3/4 bg-white/10 rounded"></div>
-              <div className="h-4 w-1/2 bg-white/10 rounded"></div>
-            </div>
-          `;
-        }
+      const DailyInsight = ({ insight, onRefresh }) => {
         if (!insight) return null;
 
         return html`
@@ -172,28 +188,19 @@
             <button 
               onClick=${onRefresh}
               className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 transition-colors text-indigo-400/50 hover:text-indigo-300 z-10"
-              title="重新生成"
+              title="更換金句"
             >
-              <i className="fas fa-sync-alt"></i>
+              <i className="fas fa-random"></i>
             </button>
-            <div className="flex items-start gap-6 mb-10">
-              <div className="p-5 bg-indigo-500/10 rounded-2xl text-indigo-400">
-                <i className="fas fa-microchip text-2xl"></i>
+            <div className="flex items-start gap-6">
+              <div className="p-5 bg-indigo-500/10 rounded-2xl text-indigo-400 flex-shrink-0">
+                <i className="fas fa-quote-left text-2xl"></i>
               </div>
               <div>
                 <p className="text-xl md:text-2xl font-medium text-white leading-relaxed mb-4">
                   "${insight.quote}"
                 </p>
                 <p className="text-sm text-indigo-400/80 font-bold uppercase tracking-widest">— ${insight.author}</p>
-              </div>
-            </div>
-            <div className="border-t border-white/5 pt-8 flex items-start gap-6">
-              <div className="p-4 bg-pink-500/10 rounded-xl text-pink-400">
-                <i className="fas fa-lightbulb text-xl"></i>
-              </div>
-              <div>
-                <h4 className="text-[10px] uppercase tracking-[0.3em] text-pink-400 font-black mb-2">ICT 應試小撇步</h4>
-                <p className="text-sm md:text-base text-indigo-100/60 leading-relaxed italic">${insight.fact}</p>
               </div>
             </div>
           </div>
@@ -204,47 +211,15 @@
         const targetDate = useMemo(() => getTargetDate(), []);
         const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft(targetDate));
         const [insight, setInsight] = useState(null);
-        const [loadingInsight, setLoadingInsight] = useState(false);
 
-        const fetchInsight = async (force = false) => {
-          const cacheKey = 'daily_insight_dse_ict_v3';
-          const cached = localStorage.getItem(cacheKey);
-          if (!force && cached) {
-            const { data, timestamp } = JSON.parse(cached);
-            if (new Date(timestamp).toDateString() === new Date().toDateString()) {
-              setInsight(data); return;
-            }
-          }
-
-          setLoadingInsight(true);
-          const ai = new GoogleGenAI({ apiKey: 'YOUR_API_KEY_HERE' }); // Replaced by platform process.env.API_KEY usually
-          try {
-            const response = await ai.models.generateContent({
-              model: "gemini-3-flash-preview",
-              contents: `你是一位資深的 DSE ICT 教師。距離 4月24日考試還有 ${timeLeft.days} 天。請提供：1.激勵話語(與科技相關) 2.作者名 3.一個ICT考點小技巧。以繁體中文及JSON返回。`,
-              config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                  type: Type.OBJECT,
-                  properties: {
-                    quote: { type: Type.STRING },
-                    author: { type: Type.STRING },
-                    fact: { type: Type.STRING }
-                  }
-                }
-              }
-            });
-            const result = JSON.parse(response.text.trim());
-            setInsight(result);
-            localStorage.setItem(cacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
-          } catch (e) {
-            setInsight({ quote: "Debug 你的心態，編程你的未來。", author: "ICT 老師", fact: "注意網絡層級（OSI Model），Data Link Layer 負責實體定址。" });
-          } finally { setLoadingInsight(false); }
+        const pickRandomInsight = () => {
+          const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length);
+          setInsight(MOTIVATIONAL_QUOTES[randomIndex]);
         };
 
         useEffect(() => {
           const timer = setInterval(() => setTimeLeft(calculateTimeLeft(targetDate)), 1000);
-          fetchInsight();
+          pickRandomInsight();
           return () => clearInterval(timer);
         }, [targetDate]);
 
@@ -259,13 +234,13 @@
             <main className="z-10 w-full max-w-6xl flex flex-col items-center">
               <header className="text-center mb-16 px-4">
                 <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full glass text-[10px] font-black tracking-[0.4em] text-indigo-300 mb-8 uppercase border border-indigo-500/20">
-                  Countdown to Exam Day
+                  ICT Exam Countdown
                 </div>
                 <h1 className="text-6xl md:text-9xl font-black mb-6 tracking-tighter leading-none">
                   <span className="text-transparent bg-clip-text bg-gradient-to-b from-white via-indigo-100 to-indigo-500 text-glow">04.24</span>
                 </h1>
                 <p className="text-indigo-200/40 text-sm md:text-lg font-bold tracking-[0.2em] uppercase pulse-soft">
-                  ${timeLeft.isComplete ? '考試已經開始！' : '距離 DSE ICT 考試，還剩餘'}
+                  ${timeLeft.isComplete ? '挑戰時刻已至！' : '距離 DSE ICT 考試，還剩餘'}
                 </p>
               </header>
 
@@ -292,10 +267,10 @@
                 </div>
               `}
 
-              <${DailyInsight} insight=${insight} loading=${loadingInsight} onRefresh=${() => fetchInsight(true)} />
+              <${DailyInsight} insight=${insight} onRefresh=${pickRandomInsight} />
 
               <footer className="mt-24 pb-8 opacity-30 text-[10px] font-black uppercase tracking-[0.5em] text-center">
-                DSE ICT Countdown • Built with Gemini 3
+                DSE ICT Countdown • Stay Focused, Stay Coding
               </footer>
             </main>
           </div>
