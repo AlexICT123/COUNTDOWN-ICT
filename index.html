@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>4月24日 倒數計時 | 期待春之盛放</title>
+    <title>DSE ICT 倒數計時 | 期待綻放時刻</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
@@ -21,7 +20,7 @@
         background-color: #020617;
         color: #f8fafc;
         margin: 0;
-        overflow: hidden;
+        overflow-x: hidden;
       }
 
       .glass {
@@ -36,7 +35,6 @@
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
       }
 
-      /* Floating Petals Animation */
       .petal {
         position: absolute;
         background-color: #ffb7c5;
@@ -71,19 +69,241 @@
         50% { opacity: 0.8; transform: scale(0.98); }
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.36.0"
-  }
-}
-</script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
-    <!-- The environment automatically imports index.tsx as a module -->
+
+    <script type="module">
+      import React, { useState, useEffect, useMemo } from 'https://esm.sh/react@19.2.3';
+      import { createRoot } from 'https://esm.sh/react-dom@19.2.3/client';
+      import htm from 'https://esm.sh/htm';
+      import { GoogleGenAI, Type } from "https://esm.sh/@google/genai@1.37.0";
+
+      const html = htm.bind(React.createElement);
+
+      // --- Logic ---
+      const getTargetDate = () => {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        let target = new Date(currentYear, 3, 24, 0, 0, 0); 
+        if (now > target) {
+          target = new Date(currentYear + 1, 3, 24, 0, 0, 0);
+        }
+        return target;
+      };
+
+      const calculateTimeLeft = (targetDate) => {
+        const now = new Date();
+        const difference = targetDate.getTime() - now.getTime();
+        if (difference <= 0) {
+          return { days: 0, hours: 0, minutes: 0, seconds: 0, isComplete: true };
+        }
+        return {
+          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+          minutes: Math.floor((difference / 1000 / 60) % 60),
+          seconds: Math.floor((difference / 1000) % 60),
+          isComplete: false,
+        };
+      };
+
+      // --- UI Components ---
+      const Petals = () => {
+        const [petals, setPetals] = useState([]);
+        useEffect(() => {
+          const petalCount = 15;
+          const newPetals = Array.from({ length: petalCount }).map((_, i) => ({
+            id: i,
+            left: Math.random() * 100 + '%',
+            size: Math.random() * 10 + 10 + 'px',
+            duration: Math.random() * 10 + 10 + 's',
+            delay: Math.random() * 5 + 's',
+            rotation: Math.random() * 360 + 'deg'
+          }));
+          setPetals(newPetals);
+        }, []);
+
+        return html`
+          <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+            ${petals.map(p => html`
+              <div 
+                key=${p.id}
+                className="petal"
+                style=${{
+                  left: p.left,
+                  width: p.size,
+                  height: p.size,
+                  animationDuration: p.duration,
+                  animationDelay: p.delay,
+                  transform: `rotate(${p.rotation})`
+                }}
+              />
+            `)}
+          </div>
+        `;
+      };
+
+      const CountdownCard = ({ value, label }) => html`
+        <div className="flex flex-col items-center group">
+          <div className="glass-card glass w-24 h-28 md:w-36 md:h-44 rounded-3xl flex items-center justify-center mb-4 transition-all duration-500 group-hover:scale-105 group-hover:border-indigo-500/50 group-hover:shadow-[0_0_40px_rgba(99,102,241,0.2)]">
+            <span className="text-4xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-indigo-100 to-indigo-400">
+              ${value.toString().padStart(2, '0')}
+            </span>
+          </div>
+          <span className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-indigo-300 opacity-40 font-black group-hover:opacity-80 transition-opacity">
+            ${label}
+          </span>
+        </div>
+      `;
+
+      const DailyInsight = ({ insight, loading, onRefresh }) => {
+        if (loading) {
+          return html`
+            <div className="mt-12 glass p-8 rounded-3xl max-w-2xl w-full animate-pulse flex flex-col gap-6">
+              <div className="h-4 w-3/4 bg-white/10 rounded"></div>
+              <div className="h-4 w-1/2 bg-white/10 rounded"></div>
+            </div>
+          `;
+        }
+        if (!insight) return null;
+
+        return html`
+          <div className="mt-12 glass glass-card p-10 rounded-[2.5rem] max-w-2xl w-full group relative overflow-hidden transition-all duration-500 hover:border-indigo-500/30">
+            <button 
+              onClick=${onRefresh}
+              className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 transition-colors text-indigo-400/50 hover:text-indigo-300 z-10"
+              title="重新生成"
+            >
+              <i className="fas fa-sync-alt"></i>
+            </button>
+            <div className="flex items-start gap-6 mb-10">
+              <div className="p-5 bg-indigo-500/10 rounded-2xl text-indigo-400">
+                <i className="fas fa-microchip text-2xl"></i>
+              </div>
+              <div>
+                <p className="text-xl md:text-2xl font-medium text-white leading-relaxed mb-4">
+                  "${insight.quote}"
+                </p>
+                <p className="text-sm text-indigo-400/80 font-bold uppercase tracking-widest">— ${insight.author}</p>
+              </div>
+            </div>
+            <div className="border-t border-white/5 pt-8 flex items-start gap-6">
+              <div className="p-4 bg-pink-500/10 rounded-xl text-pink-400">
+                <i className="fas fa-lightbulb text-xl"></i>
+              </div>
+              <div>
+                <h4 className="text-[10px] uppercase tracking-[0.3em] text-pink-400 font-black mb-2">ICT 應試小撇步</h4>
+                <p className="text-sm md:text-base text-indigo-100/60 leading-relaxed italic">${insight.fact}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      };
+
+      const App = () => {
+        const targetDate = useMemo(() => getTargetDate(), []);
+        const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft(targetDate));
+        const [insight, setInsight] = useState(null);
+        const [loadingInsight, setLoadingInsight] = useState(false);
+
+        const fetchInsight = async (force = false) => {
+          const cacheKey = 'daily_insight_dse_ict_v3';
+          const cached = localStorage.getItem(cacheKey);
+          if (!force && cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            if (new Date(timestamp).toDateString() === new Date().toDateString()) {
+              setInsight(data); return;
+            }
+          }
+
+          setLoadingInsight(true);
+          const ai = new GoogleGenAI({ apiKey: 'YOUR_API_KEY_HERE' }); // Replaced by platform process.env.API_KEY usually
+          try {
+            const response = await ai.models.generateContent({
+              model: "gemini-3-flash-preview",
+              contents: `你是一位資深的 DSE ICT 教師。距離 4月24日考試還有 ${timeLeft.days} 天。請提供：1.激勵話語(與科技相關) 2.作者名 3.一個ICT考點小技巧。以繁體中文及JSON返回。`,
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    quote: { type: Type.STRING },
+                    author: { type: Type.STRING },
+                    fact: { type: Type.STRING }
+                  }
+                }
+              }
+            });
+            const result = JSON.parse(response.text.trim());
+            setInsight(result);
+            localStorage.setItem(cacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
+          } catch (e) {
+            setInsight({ quote: "Debug 你的心態，編程你的未來。", author: "ICT 老師", fact: "注意網絡層級（OSI Model），Data Link Layer 負責實體定址。" });
+          } finally { setLoadingInsight(false); }
+        };
+
+        useEffect(() => {
+          const timer = setInterval(() => setTimeLeft(calculateTimeLeft(targetDate)), 1000);
+          fetchInsight();
+          return () => clearInterval(timer);
+        }, [targetDate]);
+
+        const progress = Math.max(0, 100 - (timeLeft.days / 365) * 100);
+
+        return html`
+          <div className="min-h-screen flex flex-col items-center justify-center p-6 relative bg-[#020617] text-slate-200 overflow-x-hidden">
+            <${Petals} />
+            
+            <div className="absolute top-[-10%] left-[-5%] w-[60%] h-[60%] bg-indigo-600/10 blur-[150px] rounded-full pointer-events-none opacity-60"></div>
+            
+            <main className="z-10 w-full max-w-6xl flex flex-col items-center">
+              <header className="text-center mb-16 px-4">
+                <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full glass text-[10px] font-black tracking-[0.4em] text-indigo-300 mb-8 uppercase border border-indigo-500/20">
+                  Countdown to Exam Day
+                </div>
+                <h1 className="text-6xl md:text-9xl font-black mb-6 tracking-tighter leading-none">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-b from-white via-indigo-100 to-indigo-500 text-glow">04.24</span>
+                </h1>
+                <p className="text-indigo-200/40 text-sm md:text-lg font-bold tracking-[0.2em] uppercase pulse-soft">
+                  ${timeLeft.isComplete ? '考試已經開始！' : '距離 DSE ICT 考試，還剩餘'}
+                </p>
+              </header>
+
+              <div className="flex flex-wrap justify-center gap-4 md:gap-10 mb-16">
+                <${CountdownCard} value=${timeLeft.days} label="Days" />
+                <${CountdownCard} value=${timeLeft.hours} label="Hours" />
+                <${CountdownCard} value=${timeLeft.minutes} label="Mins" />
+                <${CountdownCard} value=${timeLeft.seconds} label="Secs" />
+              </div>
+
+              ${!timeLeft.isComplete && html`
+                <div className="w-full max-w-3xl px-8 mb-12">
+                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5 relative">
+                    <div 
+                      className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-1000 ease-out progress-bar-glow"
+                      style=${{ width: `${progress}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between mt-4 text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400/50">
+                    <span>Preparation</span>
+                    <span className="text-indigo-300">${progress.toFixed(1)}% Ready</span>
+                    <span>Examination</span>
+                  </div>
+                </div>
+              `}
+
+              <${DailyInsight} insight=${insight} loading=${loadingInsight} onRefresh=${() => fetchInsight(true)} />
+
+              <footer className="mt-24 pb-8 opacity-30 text-[10px] font-black uppercase tracking-[0.5em] text-center">
+                DSE ICT Countdown • Built with Gemini 3
+              </footer>
+            </main>
+          </div>
+        `;
+      };
+
+      const root = createRoot(document.getElementById('root'));
+      root.render(html`<${App} />`);
+    </script>
   </body>
 </html>
